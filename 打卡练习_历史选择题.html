@@ -40,7 +40,7 @@ body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;backgr
 .quiz-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--card);border-bottom:1px solid #eee}
 .quiz-header .qnum{font-size:13px;color:var(--gray)}
 .quiz-header .topic{font-size:11px;color:var(--gold);background:var(--tag);padding:3px 10px;border-radius:10px}
-.quiz-body{flex:1;overflow-y:auto;padding:16px}
+.quiz-body{flex:1;overflow-y:auto;padding:16px 16px 90px 16px}
 .stem{font-size:15px;line-height:1.7;color:#333;margin-bottom:16px;padding:14px;background:var(--card);border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
 .options{display:flex;flex-direction:column;gap:10px}
 .opt{display:flex;align-items:flex-start;padding:13px 14px;background:var(--card);border-radius:12px;border:2px solid #e8e0d5;cursor:pointer;transition:.2s;font-size:14px;line-height:1.5}
@@ -55,12 +55,15 @@ body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;backgr
 .explanation{margin-top:12px;padding:12px;background:#fffdf5;border-radius:10px;border:1px solid #eed;font-size:13px;color:#666;display:none}
 .explanation.show{display:block}
 
-/* Floating next button */
-.quiz-fab{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:100;
-  background:var(--primary);color:#fff;padding:14px 48px;border-radius:30px;
-  font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(139,69,19,.4);
-  transition:.2s;text-align:center;min-width:160px}
-.quiz-fab:active{transform:translateX(-50%) scale(.95)}
+/* Floating next button - always visible */
+.quiz-fab{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;
+  background:var(--primary);color:#fff;padding:16px 52px;border-radius:30px;
+  font-size:18px;font-weight:700;cursor:pointer;box-shadow:0 6px 24px rgba(139,69,19,.5);
+  transition:.2s;text-align:center;min-width:180px;
+  animation:fabPulse 2s ease-in-out infinite}
+.quiz-fab:active{transform:translateX(-50%) scale(.94)}
+.hidden{opacity:0;pointer-events:none}
+@keyframes fabPulse{0%,100%{box-shadow:0 6px 24px rgba(139,69,19,.5)}50%{box-shadow:0 6px 36px rgba(139,69,19,.8)}}
 
 /* Result */
 .result{justify-content:center;align-items:center;text-align:center;padding:30px 20px}
@@ -140,9 +143,8 @@ body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;backgr
       <div class="stem" id="quiz-stem"></div>
       <div class="options" id="quiz-options"></div>
       <div class="explanation" id="quiz-explanation"></div>
-      <div style="height:80px"></div>
     </div>
-    <div class="quiz-fab" id="btn-next" onclick="nextQuestion()" style="display:none">下一题 →</div>
+    <div class="quiz-fab" id="btn-next" onclick="nextQuestion()">请先选择答案</div>
   </div>
 
   <!-- RESULT PAGE -->
@@ -419,11 +421,13 @@ function renderQuestion(){
 
   // Next button
   const btnNext = document.getElementById('btn-next');
-  btnNext.style.display = revealed ? 'block' : 'none';
-  if(i >= total-1 && revealed){
-    btnNext.textContent = '查看结果 →';
+  if(revealed){
+    btnNext.classList.remove('hidden');
+    btnNext.textContent = i>=total-1 ? '查看结果 →' : '下一题 →';
+    btnNext.style.opacity = '1';
   }else{
-    btnNext.textContent = '下一题 →';
+    btnNext.textContent = '请先选择答案';
+    btnNext.style.opacity = '0.55';
   }
 
   document.getElementById('quiz-body').scrollTop = 0;
