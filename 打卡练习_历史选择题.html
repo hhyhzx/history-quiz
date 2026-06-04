@@ -54,8 +54,13 @@ body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;backgr
 .opt.show-correct .letter{background:var(--green);color:#fff}
 .explanation{margin-top:12px;padding:12px;background:#fffdf5;border-radius:10px;border:1px solid #eed;font-size:13px;color:#666;display:none}
 .explanation.show{display:block}
-.quiz-footer{padding:12px 16px;background:var(--card);border-top:1px solid #eee;text-align:center}
-.quiz-footer .btn{width:100%;max-width:300px}
+
+/* Floating next button */
+.quiz-fab{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:100;
+  background:var(--primary);color:#fff;padding:14px 48px;border-radius:30px;
+  font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(139,69,19,.4);
+  transition:.2s;text-align:center;min-width:160px}
+.quiz-fab:active{transform:translateX(-50%) scale(.95)}
 
 /* Result */
 .result{justify-content:center;align-items:center;text-align:center;padding:30px 20px}
@@ -135,10 +140,9 @@ body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;backgr
       <div class="stem" id="quiz-stem"></div>
       <div class="options" id="quiz-options"></div>
       <div class="explanation" id="quiz-explanation"></div>
+      <div style="height:80px"></div>
     </div>
-    <div class="quiz-footer">
-      <button class="btn btn-primary" id="btn-next" onclick="nextQuestion()" style="display:none">下一题 →</button>
-    </div>
+    <div class="quiz-fab" id="btn-next" onclick="nextQuestion()" style="display:none">下一题 →</div>
   </div>
 
   <!-- RESULT PAGE -->
