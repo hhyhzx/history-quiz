@@ -1,0 +1,6 @@
+*.py
+images/
+*.docx
+*.md
+questions_data.js
+questions_extra.json

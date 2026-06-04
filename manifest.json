@@ -1,0 +1,19 @@
+{
+  "name": "历史选择题·每日打卡",
+  "short_name": "历史打卡",
+  "description": "武汉市八年级历史下册选择题真题练习",
+  "start_url": "./打卡练习_历史选择题.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f0eb",
+  "theme_color": "#8b4513",
+  "icons": [{
+    "src": "./icon-192.png",
+    "sizes": "192x192",
+    "type": "image/png"
+  },{
+    "src": "./icon-512.png",
+    "sizes": "512x512",
+    "type": "image/png"
+  }]
+}
