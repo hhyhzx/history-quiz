@@ -1,4 +1,4 @@
-const CACHE = 'history-quiz-v2';
+const CACHE = 'history-quiz-v3';
 const ASSETS = [
   './打卡练习_历史选择题.html',
   './manifest.json',

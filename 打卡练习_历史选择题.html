@@ -313,17 +313,43 @@ function getDailySeed(){
   const d = new Date();
   return d.getFullYear()*10000 + (d.getMonth()+1)*100 + d.getDate();
 }
+function dayKeyFromDate(d){
+  return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();
+}
+function recalcStreak(data){
+  // Count consecutive "done" days counting backwards from today
+  const days = data.days||{};
+  let streak = 0;
+  const today = new Date();
+  for(let i=0;i<365;i++){
+    const d = new Date(today); d.setDate(d.getDate()-i);
+    const key = dayKeyFromDate(d);
+    if(days[key] && days[key].done) streak++;
+    else break;
+  }
+  return streak;
+}
+function findEarliestUnfilledDay(data){
+  // Find the earliest past day (up to 30 days back) that hasn't been filled
+  const days = data.days||{};
+  const today = new Date();
+  for(let i=1;i<=30;i++){
+    const d = new Date(today); d.setDate(d.getDate()-i);
+    const key = dayKeyFromDate(d);
+    if(!days[key] || !days[key].done) return key;
+  }
+  return null; // All recent days filled
+}
 function updateHomeStats(){
   const data = loadData();
   const totalDone = (data.totalDone||0);
   const totalCorrect = (data.totalCorrect||0);
-  const streak = (data.streak||0);
   const correction = data.correction||[];
   const progressIdx = data.progressIndex||0;
   const today = getDailySeed();
   const dayKey = String(today);
 
-  document.getElementById('stat-streak').textContent = streak;
+  document.getElementById('stat-streak').textContent = recalcStreak(data);
   document.getElementById('stat-total').textContent = totalDone;
   document.getElementById('stat-rate').textContent = totalDone>0 ? Math.round(totalCorrect/totalDone*100)+'%' : '-';
   document.getElementById('corr-count').textContent = correction.length;
@@ -334,13 +360,16 @@ function updateHomeStats(){
   const endNum = Math.min(progressIdx + DAILY_COUNT, TOTAL_QUESTIONS);
   const round = Math.floor(progressIdx / TOTAL_QUESTIONS) + 1;
   const roundText = round > 1 ? ` 第${round}轮` : '';
+  const missedDays = findMissedDayCount(data);
   if(data.days && data.days[dayKey] && data.days[dayKey].done){
     const d = data.days[dayKey];
     const sessions = d.sessions||1;
     const todayTotal = d.total||DAILY_COUNT;
-    sub.textContent = `今日已刷 ${sessions} 轮(${todayTotal}题) 正确率 ${Math.round(d.correct/d.total*100)}% · 进度 ${progressIdx}/${TOTAL_QUESTIONS}${roundText}`;
+    const info = missedDays>0 ? ` · 还可补打卡 ${missedDays} 天` : '';
+    sub.textContent = `今日已刷 ${sessions} 轮(${todayTotal}题) 正确率 ${Math.round(d.correct/d.total*100)}% · 进度 ${progressIdx}/${TOTAL_QUESTIONS}${roundText}${info}`;
   }else{
-    sub.textContent = `武汉市八年级历史下册真题汇编 · 今日题目：第 ${startNum}–${endNum} 题 / 共 ${TOTAL_QUESTIONS} 题${roundText}`;
+    const info = missedDays>0 ? ` · 可补打卡 ${missedDays} 天` : '';
+    sub.textContent = `武汉市八年级历史下册真题汇编 · 今日题目：第 ${startNum}–${endNum} 题 / 共 ${TOTAL_QUESTIONS} 题${roundText}${info}`;
   }
 
   // Streak dots
@@ -348,7 +377,7 @@ function updateHomeStats(){
   streakRow.innerHTML = '';
   for(let i=6;i>=0;i--){
     const d = new Date(); d.setDate(d.getDate()-i);
-    const ds = d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();
+    const ds = dayKeyFromDate(d);
     const dayData = data.days||{};
     const dot = document.createElement('span');
     dot.className = 'streak-dot'+(dayData[ds]?' done':'');
@@ -361,6 +390,17 @@ function updateHomeStats(){
     const pct = Math.round(progressIdx/TOTAL_QUESTIONS*100);
     progDiv.innerHTML = `<div class="progress-bar" style="margin-top:8px"><div class="progress-fill" style="width:${pct}%"></div></div><div style="font-size:10px;color:var(--gray);margin-top:2px">总进度 ${progressIdx}/${TOTAL_QUESTIONS} (${pct}%)</div>`;
   }
+}
+function findMissedDayCount(data){
+  const days = data.days||{};
+  const today = new Date();
+  let count = 0;
+  for(let i=1;i<=30;i++){
+    const d = new Date(today); d.setDate(d.getDate()-i);
+    const key = dayKeyFromDate(d);
+    if(!days[key] || !days[key].done) count++;
+  }
+  return count;
 }
 
 // ========== QUIZ ==========
@@ -456,7 +496,6 @@ function nextQuestion(){
 }
 
 function saveCurrentProgress(){
-  // Save each answered question to stats
   const data = loadData();
   data.totalDone = data.totalDone || 0;
   data.totalCorrect = data.totalCorrect || 0;
@@ -465,57 +504,40 @@ function saveCurrentProgress(){
 
   const answered = appState.answers.filter(a=>a!==null).length;
   if(answered === DAILY_COUNT){
-    // All done
     const today = getDailySeed();
-    const dayKey = String(today);
+    // Fill the earliest missed day first, or today if no gaps
+    const fillDay = findEarliestUnfilledDay(data);
+    const fillKey = String(fillDay || today);
 
-    if(!data.days[dayKey]){
-      data.days[dayKey] = {total:0,correct:0};
+    if(!data.days[fillKey]){
+      data.days[fillKey] = {total:0,correct:0};
     }
 
-    let newCorrect = 0;
     for(let i=0;i<DAILY_COUNT;i++){
       const qIdx = appState.questions[i];
       const q = Q[qIdx];
       const userAns = appState.answers[i];
       const isCorrect = userAns === q.x;
 
-      // Always count (support multiple sessions per day)
       data.totalDone++;
-      data.days[dayKey].total = (data.days[dayKey].total||0) + 1;
+      data.days[fillKey].total = (data.days[fillKey].total||0) + 1;
       if(isCorrect){
         data.totalCorrect++;
-        data.days[dayKey].correct = (data.days[dayKey].correct||0) + 1;
-        newCorrect++;
+        data.days[fillKey].correct = (data.days[fillKey].correct||0) + 1;
       }else{
-          // Wrong answer -> add to permanent correction book
-          const corrEntry = {
-            qIdx: qIdx,
-            userAns: userAns,
-            date: today,
-          };
-          // Avoid duplicates in correction
-          const exists = data.correction.find(c=>c.qIdx===qIdx);
-          if(!exists){
-            data.correction.push(corrEntry);
-          }
+        const corrEntry = { qIdx: qIdx, userAns: userAns, date: today };
+        const exists = data.correction.find(c=>c.qIdx===qIdx);
+        if(!exists){
+          data.correction.push(corrEntry);
         }
+      }
     }
 
-    // Update streak
-    const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
-    const yKey = yesterday.getFullYear()*10000+(yesterday.getMonth()+1)*100+yesterday.getDate();
-    if(data.days[yKey]){
-      data.streak = (data.streak||0)+1;
-    }else if(!data.days[dayKey] || data.days[dayKey].total===DAILY_COUNT){
-      data.streak = 1;
-    }
-    data.days[dayKey].done = true;
+    data.days[fillKey].done = true;
+    data.days[fillKey].sessions = (data.days[fillKey].sessions||0) + 1;
     data.lastQuizDate = today;
 
     // Advance sequential progress
-    const sessionsToday = data.days[dayKey].sessions || 1;
-    data.days[dayKey].sessions = sessionsToday + 1;
     const prevIdx = data.progressIndex||0;
     data.progressIndex = (prevIdx + DAILY_COUNT) % TOTAL_QUESTIONS;
   }
@@ -535,20 +557,28 @@ function finishQuiz(){
 
   const data = loadData();
   const progIdx = data.progressIndex||0;
+  const missedDays = findMissedDayCount(data);
   let detail = `本次正确 ${correct}/${total} 题`;
-  document.getElementById('result-detail').textContent = detail + ` · 总进度 ${progIdx}/${TOTAL_QUESTIONS}`;
+  detail += ` · 连续打卡 ${recalcStreak(data)} 天`;
+  detail += ` · 总进度 ${progIdx}/${TOTAL_QUESTIONS}`;
+  if(missedDays>0) detail += ` · 还可补卡 ${missedDays} 天`;
+  document.getElementById('result-detail').textContent = detail;
 
   // Wrong list
   const wrongDiv = document.getElementById('wrong-list');
   wrongDiv.innerHTML = '';
   if(correct < total){
     wrongDiv.innerHTML = '<h4 style="margin-bottom:8px">错题（已加入纠错本）：</h4>';
+    const letters = ['A','B','C','D'];
+    const keys = ['a','b','c','d'];
     for(let i=0;i<DAILY_COUNT;i++){
       if(appState.answers[i]!==Q[appState.questions[i]].x){
         const q = Q[appState.questions[i]];
+        const ansIdx = letters.indexOf(q.x);
+        const answerText = ansIdx>=0 ? q[keys[ansIdx]] : q.x;
         wrongDiv.innerHTML += `<div class="item">
           <strong>${q.t}</strong> ${q.s.substring(0,60)}...<br>
-          正确答案：${q.x}
+          正确答案：${q.x}. ${answerText}
         </div>`;
       }
     }
@@ -576,15 +606,19 @@ function showCorrection(){
     listDiv.innerHTML = '';
     // Show newest first
     const sorted = [...correction].reverse();
+    const letters = ['A','B','C','D'];
+    const keys = ['a','b','c','d'];
     for(const entry of sorted){
       const q = Q[entry.qIdx];
       if(!q) continue;
       const date = String(entry.date);
       const dateStr = date.substring(0,4)+'/'+date.substring(4,6)+'/'+date.substring(6,8);
+      const ansIdx = letters.indexOf(q.x);
+      const answerText = ansIdx>=0 ? q[keys[ansIdx]] : q.x;
       listDiv.innerHTML += `<div class="correction-item">
         <div class="meta">${q.t} ${q.u} · ${dateStr}</div>
         <div class="q">${q.s}</div>
-        <div class="right">✅ 正确答案：${q.x}</div>
+        <div class="right">✅ 正确答案：${q.x}. ${answerText}</div>
       </div>`;
     }
   }
