@@ -644,9 +644,11 @@ document.addEventListener('touchend',e=>{
 
 init();
 
-// Register service worker for offline/PWA
+// Unregister any old Service Workers first, so the phone always gets the latest version
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(r => r.unregister());
+  });
 }
 </script>
 </body>
