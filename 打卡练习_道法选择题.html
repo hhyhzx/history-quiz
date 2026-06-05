@@ -87,9 +87,7 @@ body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;backgr
       <div id="overall-progress"></div>
       <div style="margin-bottom:16px"><button class="btn btn-primary" onclick="startQuiz()">开始刷题 (10题/轮)</button></div>
       <div><button class="btn btn-outline btn-sm" onclick="showCorrection()">纠错本 (<span id="corr-count">0</span>)</button></div>
-<div style="margin-top:12px"><span style="font-size:11px;color:var(--gray)">数据备份：</span>
-<button class="btn btn-outline btn-sm" style="font-size:12px;padding:8px 16px" onclick="exportData()">导出</button>
-<button class="btn btn-outline btn-sm" style="font-size:12px;padding:8px 16px;margin-left:4px" onclick="document.getElementById('import-file').click()">导入</button>
+<div style="margin-top:12px"><button class="btn btn-outline btn-sm" style="font-size:12px;padding:8px 16px" onclick="document.getElementById('import-file').click()">导入备份</button>
 <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)"></div>
     </div>
   </div>
