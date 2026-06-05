@@ -422,7 +422,8 @@ function renderQuestion(){
   const q = Q[appState.questions[i]];
   const total = DAILY_COUNT;
 
-  document.getElementById('quiz-progress').textContent = `第 ${i+1}/${total} 题`;
+  const globalNum = appState.questions[i] + 1;
+	  document.getElementById('quiz-progress').textContent = `第 ${globalNum}/138 题 · ${i+1}/${total}`;
   document.getElementById('quiz-topic').textContent = q.t + ' ' + q.u;
   document.getElementById('progress-fill').style.width = ((i)/total*100)+'%';
   document.getElementById('quiz-stem').textContent = q.s;
@@ -451,26 +452,19 @@ function renderQuestion(){
 
   // Explanation
   const explDiv = document.getElementById('quiz-explanation');
+  const nextDiv = document.getElementById('quiz-next-wrap');
   if(revealed){
     explDiv.className = 'explanation show';
-    const correctText = q[keys[letters.indexOf(q.x)]];
-    explDiv.innerHTML = `<strong>正确答案：${q.x}</strong> — ${correctText}`;
-  }else{
-    explDiv.className = 'explanation';
-
-    // Create/render next button right after explanation
-    const nextDiv = document.getElementById('quiz-next-wrap');
+    explDiv.innerHTML = `<strong>正确答案：${q.x}</strong>`;
+    const btn = document.createElement('button');
+    btn.className = 'quiz-next-btn';
+    btn.textContent = i>=total-1 ? '查看结果 →' : '下一题 →';
+    btn.onclick = nextQuestion;
     nextDiv.innerHTML = '';
-    if(revealed){
-      const btn = document.createElement('button');
-      btn.className = 'quiz-next-btn';
-      btn.textContent = i>=total-1 ? '查看结果 →' : '下一题 →';
-      btn.onclick = nextQuestion;
-      nextDiv.appendChild(btn);
-    }
+    nextDiv.appendChild(btn);
   }else{
     explDiv.className = 'explanation';
-    document.getElementById('quiz-next-wrap').innerHTML = '';
+    nextDiv.innerHTML = '';
   }
 
   document.getElementById('quiz-body').scrollTop = 0;
@@ -569,15 +563,16 @@ function finishQuiz(){
   wrongDiv.innerHTML = '';
   if(correct < total){
     wrongDiv.innerHTML = '<h4 style="margin-bottom:8px">错题（已加入纠错本）：</h4>';
-    const letters = ['A','B','C','D'];
-    const keys = ['a','b','c','d'];
     for(let i=0;i<DAILY_COUNT;i++){
       if(appState.answers[i]!==Q[appState.questions[i]].x){
         const q = Q[appState.questions[i]];
-        const ansIdx = letters.indexOf(q.x);
-        const answerText = ansIdx>=0 ? q[keys[ansIdx]] : q.x;
         wrongDiv.innerHTML += `<div class="item">
           <strong>${q.t}</strong> ${q.s.substring(0,60)}...<br>
+          正确答案：${q.x}
+        </div>`;
+      }
+    }
+  }
           正确答案：${q.x}. ${answerText}
         </div>`;
       }
