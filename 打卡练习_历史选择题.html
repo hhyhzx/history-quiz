@@ -529,7 +529,7 @@ function renderQuestion(){
   const nextDiv = document.getElementById('quiz-next-wrap');
   if(revealed){
     explDiv.className = 'explanation show';
-    explDiv.innerHTML = `<strong>${q.x}</strong>　[知识点] ${q.t} ${q.tp||''}　[来源] ${q.src||''}`;
+    explDiv.innerHTML = `<strong>${q.x}</strong>　<span style="color:#c0392b;font-weight:700">[知识点] ${q.t} ${q.tp||''}</span>　[来源] ${q.src||''}`;
     nextDiv.innerHTML = '';
     const wrap = document.createElement('div');
     wrap.className = 'quiz-nav-wrap';
