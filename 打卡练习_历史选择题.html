@@ -100,7 +100,7 @@ body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;backgr
   <div class="page active" id="page-home">
     <div class="home">
       <h1>历史选择题 · 每日打卡</h1>
-      <div class="sub">武汉市八年级历史下册真题汇编</div>
+      <div class="sub">武汉市八年级历史下册真题汇编 · v6</div>
       <div class="stat-row">
         <div class="stat-card">
           <div class="num" id="stat-streak">0</div>
@@ -602,12 +602,11 @@ function showCorrection(){
       if(!q) continue;
       const date = String(entry.date);
       const dateStr = date.substring(0,4)+'/'+date.substring(4,6)+'/'+date.substring(6,8);
-      const ansIdx = letters.indexOf(q.x);
-      const answerText = ansIdx>=0 ? q[keys[ansIdx]] : q.x;
+      const ansText = q.x==='A' ? q.a : q.x==='B' ? q.b : q.x==='C' ? q.c : q.d;
       listDiv.innerHTML += `<div class="correction-item">
         <div class="meta">${q.t} ${q.u} · ${dateStr}</div>
         <div class="q">${q.s}</div>
-        <div class="right">✅ 正确答案：${q.x}. ${answerText}</div>
+        <div class="right">✅ 正确答案：${q.x}，${ansText}</div>
       </div>`;
     }
   }
