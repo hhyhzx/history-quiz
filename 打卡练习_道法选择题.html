@@ -65,6 +65,10 @@ body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;backgr
 .correction-item .meta{font-size:11px;color:var(--gold);margin-bottom:6px}
 .correction-item .q{font-size:13px;line-height:1.6;margin-bottom:8px}
 .correction-item .right{font-size:12px;color:var(--green)}
+.correction-item .streak{font-size:11px;color:var(--gold);margin-top:4px}
+.btn-practice{background:var(--gold);color:#fff;border:none;padding:6px 14px;border-radius:14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn-practice:active{transform:scale(.96)}
+.correction-quiz-badge{font-size:11px;color:#fff;background:var(--gold);padding:3px 10px;border-radius:10px}
 .empty-state{text-align:center;padding:60px 20px;color:var(--gray)}
 .empty-state .icon{font-size:48px;margin-bottom:12px}
 .streak-row{display:flex;gap:4px;justify-content:center;margin-bottom:12px}
@@ -126,6 +130,7 @@ body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;backgr
     <div class="correction-header">
       <span class="back" onclick="goHome()">←</span>
       <span style="font-weight:700;color:var(--primary)">纠错本</span>
+      <button class="btn-practice" id="btn-practice" style="display:none" onclick="startCorrectionQuiz()">重新练习错题</button>
       <span style="font-size:12px;color:var(--gray);margin-left:auto" id="corr-total">共0题</span>
     </div>
     <div class="correction-list" id="correction-list"></div>
@@ -225,7 +230,7 @@ const TOTAL_QUESTIONS = Q.length;
 // ========== STATE ==========
 function loadData(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY))||{}}catch(e){return{}}}
 function saveData(d){localStorage.setItem(STORAGE_KEY,JSON.stringify(d));}
-let appState = {questions:[],currentIdx:0,answers:[],revealed:[],mode:'home'};
+let appState = {questions:[],currentIdx:0,answers:[],revealed:[],mode:'home',quizMode:'normal'};
 
 // ========== NAVIGATION ==========
 function showPage(name){
@@ -294,14 +299,19 @@ function getProgressIndex(){const data=loadData();return data.progressIndex||0;}
 function startQuiz(){
   const start=getProgressIndex(),indices=[];
   for(let i=0;i<DAILY_COUNT;i++)indices.push((start+i)%TOTAL_QUESTIONS);
-  appState={questions:indices,currentIdx:0,answers:new Array(DAILY_COUNT).fill(null),revealed:new Array(DAILY_COUNT).fill(false),mode:'quiz'};
+  appState={questions:indices,currentIdx:0,answers:new Array(DAILY_COUNT).fill(null),revealed:new Array(DAILY_COUNT).fill(false),mode:'quiz',quizMode:'normal'};
   showPage('quiz');renderQuestion();
 }
 function renderQuestion(){
-  const i=appState.currentIdx,q=Q[appState.questions[i]],total=DAILY_COUNT;
+  const i=appState.currentIdx,q=Q[appState.questions[i]],total=appState.questions.length;
   const globalNum=appState.questions[i]+1;
-  document.getElementById('quiz-progress').textContent='第 '+globalNum+'/'+TOTAL_QUESTIONS+' 题 · '+(i+1)+'/'+total;
-  document.getElementById('quiz-topic').textContent=q.t+' '+q.u;
+  if(appState.quizMode==='correction'){
+    document.getElementById('quiz-progress').textContent='错题 '+(i+1)+'/'+total;
+    document.getElementById('quiz-topic').innerHTML='<span class="correction-quiz-badge">🔁 纠错复习</span>';
+  }else{
+    document.getElementById('quiz-progress').textContent='第 '+globalNum+'/'+TOTAL_QUESTIONS+' 题 · '+(i+1)+'/'+total;
+    document.getElementById('quiz-topic').textContent=q.t+' '+q.u;
+  }
   document.getElementById('progress-fill').style.width=((i)/total*100)+'%';
   document.getElementById('quiz-stem').textContent=q.s;
   const imgDiv=document.getElementById('quiz-image');
@@ -344,7 +354,7 @@ function selectAnswer(qIdx,letter){
   renderQuestion();saveCurrentProgress();
 }
 function nextQuestion(){
-  if(appState.currentIdx<DAILY_COUNT-1){appState.currentIdx++;renderQuestion();}else{finishQuiz();}
+  if(appState.currentIdx<appState.questions.length-1){appState.currentIdx++;renderQuestion();}else{finishQuiz();}
 }
 function prevQuestion(){if(appState.currentIdx>0){appState.currentIdx--;renderQuestion();}}
 function saveCurrentProgress(){
@@ -352,61 +362,136 @@ function saveCurrentProgress(){
   data.totalDone=data.totalDone||0;data.totalCorrect=data.totalCorrect||0;
   data.days=data.days||{};data.correction=data.correction||[];
   const answered=appState.answers.filter(a=>a!==null).length;
-  if(answered===DAILY_COUNT){
+  if(answered===DAILY_COUNT||(appState.quizMode==='correction'&&answered===appState.questions.length)){
     const today=getDailySeed();
-    const fillDay=findEarliestUnfilledDay(data),fillKey=String(fillDay||today);
-    if(!data.days[fillKey])data.days[fillKey]={total:0,correct:0};
-    for(let i=0;i<DAILY_COUNT;i++){
-      const qIdx=appState.questions[i],q=Q[qIdx],userAns=appState.answers[i],isCorrect=userAns===q.x;
-      data.totalDone++;data.days[fillKey].total=(data.days[fillKey].total||0)+1;
-      if(isCorrect){data.totalCorrect++;data.days[fillKey].correct=(data.days[fillKey].correct||0)+1;}
-      else{const corrEntry={qIdx:qIdx,userAns:userAns,date:today};const exists=data.correction.find(c=>c.qIdx===qIdx);if(!exists)data.correction.push(corrEntry);}
+    if(appState.quizMode==='correction'){
+      let removed=0;
+      for(let i=0;i<appState.questions.length;i++){
+        const qIdx=appState.questions[i],q=Q[qIdx],userAns=appState.answers[i],isCorrect=userAns===q.x;
+        data.totalDone++;
+        if(isCorrect)data.totalCorrect++;
+        const entry=data.correction.find(c=>c.qIdx===qIdx);
+        if(entry){
+          entry.correctStreak=entry.correctStreak||0;
+          if(isCorrect){
+            entry.correctStreak++;
+            entry.lastCorrectDate=today;
+            if(entry.correctStreak>=7){data.correction=data.correction.filter(c=>c.qIdx!==qIdx);removed++;}
+          }else{entry.correctStreak=0;entry.lastCorrectDate=null;}
+        }
+      }
+      data._lastCorrectionRemoved=removed;
+    }else{
+      const fillDay=findEarliestUnfilledDay(data),fillKey=String(fillDay||today);
+      if(!data.days[fillKey])data.days[fillKey]={total:0,correct:0};
+      for(let i=0;i<DAILY_COUNT;i++){
+        const qIdx=appState.questions[i],q=Q[qIdx],userAns=appState.answers[i],isCorrect=userAns===q.x;
+        data.totalDone++;data.days[fillKey].total=(data.days[fillKey].total||0)+1;
+        if(isCorrect){data.totalCorrect++;data.days[fillKey].correct=(data.days[fillKey].correct||0)+1;}
+        else{const corrEntry={qIdx:qIdx,userAns:userAns,date:today,correctStreak:0,lastCorrectDate:null};const exists=data.correction.find(c=>c.qIdx===qIdx);if(!exists)data.correction.push(corrEntry);}
+      }
+      data.days[fillKey].done=true;data.days[fillKey].sessions=(data.days[fillKey].sessions||0)+1;
+      data.lastQuizDate=today;
+      const prevIdx=data.progressIndex||0;data.progressIndex=(prevIdx+DAILY_COUNT)%TOTAL_QUESTIONS;
     }
-    data.days[fillKey].done=true;data.days[fillKey].sessions=(data.days[fillKey].sessions||0)+1;
-    data.lastQuizDate=today;
-    const prevIdx=data.progressIndex||0;data.progressIndex=(prevIdx+DAILY_COUNT)%TOTAL_QUESTIONS;
   }
   saveData(data);
 }
 function finishQuiz(){
   saveCurrentProgress();
-  const correct=appState.answers.filter((a,i)=>a===Q[appState.questions[i]].x).length,total=DAILY_COUNT;
-  document.getElementById('result-score').textContent=correct+'/'+total;
-  const msgs={10:'太棒了！全部正确！',9:'非常优秀！',8:'很棒！',7:'不错！',6:'继续加油！',5:'还需努力！',4:'要多复习哦！'};
-  document.getElementById('result-msg').textContent=msgs[correct]||'加油！';
-  const data=loadData(),progIdx=data.progressIndex||0,missedDays=findMissedDayCount(data);
-  let detail='本次正确 '+correct+'/'+total+' 题';
-  detail+=' · 连续打卡 '+recalcStreak(data)+' 天 · 总进度 '+progIdx+'/'+TOTAL_QUESTIONS;
-  if(missedDays>0)detail+=' · 还可补卡 '+missedDays+' 天';
-  document.getElementById('result-detail').textContent=detail;
-  const wrongDiv=document.getElementById('wrong-list');wrongDiv.innerHTML='';
-  if(correct<total){
-    wrongDiv.innerHTML='<h4 style="margin-bottom:8px">错题（已加入纠错本）：</h4>';
-    for(let i=0;i<DAILY_COUNT;i++){
-      if(appState.answers[i]!==Q[appState.questions[i]].x){
-        const q=Q[appState.questions[i]];
-        wrongDiv.innerHTML+='<div class="item"><strong>'+q.t+'</strong> '+q.s.substring(0,60)+'...<br>正确答案：'+q.x+'</div>';
+  const total=appState.quizMode==='correction'?appState.questions.length:DAILY_COUNT;
+  const correct=appState.answers.filter((a,i)=>a===Q[appState.questions[i]].x).length;
+  if(appState.quizMode==='correction'){
+    document.getElementById('result-score').textContent=correct+'/'+total;
+    document.getElementById('result-msg').textContent=correct===total?'错题全部答对！':'继续加油！';
+    const data=loadData();const removed=data._lastCorrectionRemoved||0;delete data._lastCorrectionRemoved;saveData(data);
+    const remaining=(data.correction||[]).length;
+    let detail='本次正确 '+correct+'/'+total+' 题';
+    if(removed>0)detail+=' · 🎉 移除了 '+removed+' 题（达到7天连续正确）';
+    detail+=' · 纠错本剩余 '+remaining+' 题';
+    document.getElementById('result-detail').textContent=detail;
+    const wrongDiv=document.getElementById('wrong-list');wrongDiv.innerHTML='';
+    if(correct<total){
+      wrongDiv.innerHTML='<h4 style="margin-bottom:8px">错题（连续正确天数已重置）：</h4>';
+      for(let i=0;i<total;i++){
+        if(appState.answers[i]!==Q[appState.questions[i]].x){
+          const q=Q[appState.questions[i]];
+          wrongDiv.innerHTML+='<div class="item"><strong>'+q.t+'</strong> '+q.s.substring(0,60)+'...<br>正确答案：'+q.x+'</div>';
+        }
       }
     }
+    const btnArea=document.querySelector('#page-result .result > div[style]');
+    if(btnArea)btnArea.innerHTML=remaining>0?'<button class="btn btn-primary btn-sm" onclick="startCorrectionQuiz()">继续复习错题</button><button class="btn btn-outline btn-sm" onclick="goHome()">返回首页</button>':'<button class="btn btn-primary btn-sm" onclick="goHome()">返回首页</button>';
+  }else{
+    document.getElementById('result-score').textContent=correct+'/'+total;
+    const msgs={10:'太棒了！全部正确！',9:'非常优秀！',8:'很棒！',7:'不错！',6:'继续加油！',5:'还需努力！',4:'要多复习哦！'};
+    document.getElementById('result-msg').textContent=msgs[correct]||'加油！';
+    const data=loadData(),progIdx=data.progressIndex||0,missedDays=findMissedDayCount(data);
+    let detail='本次正确 '+correct+'/'+total+' 题';
+    detail+=' · 连续打卡 '+recalcStreak(data)+' 天 · 总进度 '+progIdx+'/'+TOTAL_QUESTIONS;
+    if(missedDays>0)detail+=' · 还可补卡 '+missedDays+' 天';
+    document.getElementById('result-detail').textContent=detail;
+    const wrongDiv=document.getElementById('wrong-list');wrongDiv.innerHTML='';
+    if(correct<total){
+      wrongDiv.innerHTML='<h4 style="margin-bottom:8px">错题（已加入纠错本）：</h4>';
+      for(let i=0;i<total;i++){
+        if(appState.answers[i]!==Q[appState.questions[i]].x){
+          const q=Q[appState.questions[i]];
+          wrongDiv.innerHTML+='<div class="item"><strong>'+q.t+'</strong> '+q.s.substring(0,60)+'...<br>正确答案：'+q.x+'</div>';
+        }
+      }
+    }
+    const btnArea=document.querySelector('#page-result .result > div[style]');
+    if(btnArea)btnArea.innerHTML='<button class="btn btn-primary btn-sm" onclick="continueQuiz()">继续刷10题</button><button class="btn btn-outline btn-sm" onclick="goHome()">返回首页</button><button class="btn btn-outline btn-sm" style="background:#fffbe6;border-color:#d4a017;color:#8b6914" onclick="exportData()">💾 保存备份</button>';
   }
   showPage('result');updateHomeStats();
 }
 function continueQuiz(){startQuiz();}
 
 // ========== CORRECTION BOOK ==========
+function maintainCorrectionStreaks(data){
+  const correction=data.correction||[];if(!correction.length)return;
+  const today=getDailySeed();
+  const yesterday=(()=>{const d=new Date();d.setDate(d.getDate()-1);return dayKeyFromDate(d);})();
+  let changed=false;
+  for(const entry of correction){
+    if(entry.lastCorrectDate&&entry.lastCorrectDate!==today&&entry.lastCorrectDate!==yesterday){entry.correctStreak=0;entry.lastCorrectDate=null;changed=true;}
+    if(entry.correctStreak===undefined)entry.correctStreak=0;
+    if(entry.lastCorrectDate===undefined)entry.lastCorrectDate=null;
+  }
+  return changed;
+}
+function startCorrectionQuiz(){
+  const data=loadData();
+  maintainCorrectionStreaks(data);
+  const correction=data.correction||[];
+  if(correction.length===0){alert('纠错本为空，没有需要复习的题目！');return;}
+  const sorted=[...correction].sort((a,b)=>(a.correctStreak||0)-(b.correctStreak||0));
+  const pick=sorted.slice(0,Math.min(10,sorted.length));
+  const indices=pick.map(e=>e.qIdx);
+  appState={questions:indices,currentIdx:0,answers:new Array(indices.length).fill(null),revealed:new Array(indices.length).fill(false),mode:'quiz',quizMode:'correction'};
+  showPage('quiz');renderQuestion();
+}
 function showCorrection(){
-  const data=loadData(),correction=data.correction||[];
+  const data=loadData();
+  maintainCorrectionStreaks(data);
+  saveData(data);
+  const correction=data.correction||[];
   document.getElementById('corr-total').textContent='共'+correction.length+'题';
+  const btnPractice=document.getElementById('btn-practice');
+  btnPractice.style.display=correction.length>0?'':'none';
   const listDiv=document.getElementById('correction-list');
   if(correction.length===0){
-    listDiv.innerHTML='<div class="empty-state"><div class="icon">📖</div><p>纠错本为空</p><p style="font-size:12px">做错的题目会自动加入这里，永久保存</p></div>';
+    listDiv.innerHTML='<div class="empty-state"><div class="icon">📖</div><p>纠错本为空</p><p style="font-size:12px">连续7天答对的错题会自动移除，加油！</p></div>';
   }else{
     listDiv.innerHTML='';const sorted=[...correction].reverse();
     for(const entry of sorted){
       const q=Q[entry.qIdx];if(!q)continue;
       const date=String(entry.date),dateStr=date.substring(0,4)+'/'+date.substring(4,6)+'/'+date.substring(6,8);
       const ansText=q.x==='A'?q.a:q.x==='B'?q.b:q.x==='C'?q.c:q.d;
-      listDiv.innerHTML+='<div class="correction-item"><div class="meta">'+q.t+' '+q.u+' · '+dateStr+'</div><div class="q">'+q.s+'</div><div class="right">✅ 正确答案：'+q.x+'. '+ansText+'</div></div>';
+      const streak=entry.correctStreak||0;
+      const streakHtml=streak>0?'<div class="streak">🔥 连续正确 '+streak+'/7 天</div>':'<div class="streak" style="color:var(--gray)">还需连续正确 7 天</div>';
+      listDiv.innerHTML+='<div class="correction-item"><div class="meta">'+q.t+' '+q.u+' · '+dateStr+'</div><div class="q">'+q.s+'</div><div class="right">✅ 正确答案：'+q.x+'. '+ansText+'</div>'+streakHtml+'</div>';
     }
   }
   showPage('correction');
@@ -434,7 +519,7 @@ function importData(e){
 }
 
 // ========== INIT ==========
-function init(){updateHomeStats();showPage('home');}
+function init(){const data=loadData();if(maintainCorrectionStreaks(data))saveData(data);updateHomeStats();showPage('home');}
 let touchStartX=0;
 document.addEventListener('touchstart',e=>{touchStartX=e.touches[0].clientX});
 document.addEventListener('touchend',e=>{
