@@ -126,6 +126,12 @@ body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;backgr
       <div>
         <button class="btn btn-outline btn-sm" onclick="showCorrection()">纠错本 (<span id="corr-count">0</span>)</button>
       </div>
+      <div style="margin-top:12px">
+        <span style="font-size:11px;color:var(--gray)">数据备份：</span>
+        <button class="btn btn-outline btn-sm" style="font-size:12px;padding:8px 16px" onclick="exportData()">导出</button>
+        <button class="btn btn-outline btn-sm" style="font-size:12px;padding:8px 16px;margin-left:4px" onclick="document.getElementById('import-file').click()">导入</button>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+      </div>
     </div>
   </div>
 
@@ -712,6 +718,35 @@ function resetData(){
     localStorage.removeItem(STORAGE_KEY);
     goHome();
   }
+}
+
+// ========== EXPORT/IMPORT ==========
+function exportData(){
+  const data = loadData();
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const now = new Date();
+  const ds = now.getFullYear()+'-'+(now.getMonth()+1).toString().padStart(2,'0')+'-'+now.getDate().toString().padStart(2,'0');
+  a.href = url; a.download = 'history-quiz-backup-'+ds+'.json';
+  a.click(); URL.revokeObjectURL(url);
+}
+function importData(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  if(!confirm('导入将覆盖当前所有打卡记录和纠错本数据，确定继续？')){e.target.value='';return;}
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      const data = JSON.parse(ev.target.result);
+      if(typeof data.totalDone!=='number') throw new Error('格式错误');
+      saveData(data);
+      alert('数据导入成功！');
+      goHome();
+    }catch(err){alert('文件格式不正确，导入失败');}
+  };
+  reader.readAsText(file);
+  e.target.value = '';
 }
 
 // ========== INIT ==========
