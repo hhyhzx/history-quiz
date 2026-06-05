@@ -46,8 +46,12 @@ body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;backgr
 .opt.wrong .letter{background:var(--red);color:#fff}
 .explanation{margin-top:12px;padding:12px;background:#f5f9fd;border-radius:10px;border:1px solid #dde;font-size:13px;color:#666;display:none}
 .explanation.show{display:block}
-.quiz-next-btn{display:block;width:100%;margin-top:14px;padding:14px;background:var(--primary);color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;text-align:center;box-shadow:0 3px 12px rgba(26,82,118,.35);transition:.2s}
-.quiz-next-btn:active{transform:scale(.97)}
+.quiz-nav-wrap{display:flex;gap:10px;margin-top:14px}
+.quiz-nav-wrap .single{flex:1}
+.quiz-nav-btn{flex:1;display:block;padding:14px;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;text-align:center;transition:.2s}
+.quiz-next-btn{background:var(--primary);color:#fff;border:none;box-shadow:0 3px 12px rgba(26,82,118,.35)}
+.quiz-prev-btn{background:#fff;color:var(--primary);border:2px solid var(--primary)}
+.quiz-nav-btn:active{transform:scale(.97)}
 .result{justify-content:center;align-items:center;text-align:center;padding:30px 20px}
 .result .big-num{font-size:60px;font-weight:800;color:var(--primary)}
 .result .big-lbl{font-size:14px;color:var(--gray);margin-bottom:16px}
@@ -316,9 +320,18 @@ function renderQuestion(){
   if(revealed){
     explDiv.className='explanation show';
     explDiv.innerHTML='<strong>正确答案：'+q.x+'</strong>';
-    const btn=document.createElement('button');btn.className='quiz-next-btn';
-    btn.textContent=i>=total-1?'查看结果 →':'下一题 →';
-    btn.onclick=nextQuestion;nextDiv.innerHTML='';nextDiv.appendChild(btn);
+    nextDiv.innerHTML='';
+    const wrap=document.createElement('div');wrap.className='quiz-nav-wrap';
+    if(i>0){
+      const prevBtn=document.createElement('button');
+      prevBtn.className='quiz-nav-btn quiz-prev-btn';prevBtn.textContent='← 上一题';
+      prevBtn.onclick=prevQuestion;wrap.appendChild(prevBtn);
+    }
+    const nextBtn=document.createElement('button');
+    nextBtn.className='quiz-nav-btn quiz-next-btn';
+    if(i===0)nextBtn.classList.add('single');
+    nextBtn.textContent=i>=total-1?'查看结果 →':'下一题 →';
+    nextBtn.onclick=nextQuestion;wrap.appendChild(nextBtn);nextDiv.appendChild(wrap);
   }else{explDiv.className='explanation';nextDiv.innerHTML='';}
   document.getElementById('quiz-body').scrollTop=0;
 }
@@ -329,6 +342,7 @@ function selectAnswer(qIdx,letter){
 function nextQuestion(){
   if(appState.currentIdx<DAILY_COUNT-1){appState.currentIdx++;renderQuestion();}else{finishQuiz();}
 }
+function prevQuestion(){if(appState.currentIdx>0){appState.currentIdx--;renderQuestion();}}
 function saveCurrentProgress(){
   const data=loadData();
   data.totalDone=data.totalDone||0;data.totalCorrect=data.totalCorrect||0;
@@ -401,7 +415,7 @@ document.addEventListener('touchstart',e=>{touchStartX=e.touches[0].clientX});
 document.addEventListener('touchend',e=>{
   if(appState.mode!=='quiz')return;
   const dx=e.changedTouches[0].clientX-touchStartX;
-  if(Math.abs(dx)>80&&appState.revealed[appState.currentIdx]){if(dx<-50)nextQuestion();}
+  if(Math.abs(dx)>80&&appState.revealed[appState.currentIdx]){if(dx<-50)nextQuestion();else if(dx>50)prevQuestion();}
 });
 init();
 if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(regs=>{regs.forEach(r=>r.unregister());});}
