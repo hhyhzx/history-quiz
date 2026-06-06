@@ -586,9 +586,6 @@ function selectAnswer(qIdx, letter){
   appState.answers[qIdx] = letter;
   appState.revealed[qIdx] = true;
   renderQuestion();
-
-  // Save progress immediately
-  saveCurrentProgress();
 }
 
 function nextQuestion(){

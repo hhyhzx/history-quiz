@@ -362,7 +362,7 @@ function renderQuestion(){
 }
 function selectAnswer(qIdx,letter){
   if(appState.revealed[qIdx])return;appState.answers[qIdx]=letter;appState.revealed[qIdx]=true;
-  renderQuestion();saveCurrentProgress();
+  renderQuestion();
 }
 function nextQuestion(){
   if(appState.currentIdx<appState.questions.length-1){appState.currentIdx++;renderQuestion();}else{finishQuiz();}
