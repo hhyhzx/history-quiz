@@ -624,8 +624,10 @@ function saveCurrentProgress(){
         if(entry){
           entry.correctStreak = entry.correctStreak || 0;
           if(isCorrect){
-            entry.correctStreak++;
-            entry.lastCorrectDate = today;
+            if(entry.lastCorrectDate !== today){
+              entry.correctStreak++;
+              entry.lastCorrectDate = today;
+            }
             if(entry.correctStreak >= 7){
               data.correction = data.correction.filter(c=>c.qIdx!==qIdx);
               removed++;
